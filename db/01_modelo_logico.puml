@@ -1,0 +1,158 @@
+@startuml oficina_modelo_logico
+' Modelo lógico - Sistema de Agendamento de Manutenção Veicular
+' Baseado no documento atividade_bd_oficina_v4 (Oficial)
+
+!theme plain
+skinparam linetype ortho
+hide circle
+
+entity "cliente" as cliente {
+  * id_cliente : BIGINT <<PK>>
+  --
+  nome : VARCHAR(120)
+  email : dm_email <<UNIQUE>>
+  telefone : dm_telefone
+  tipo_pessoa : dm_tipo_pessoa
+  cpf : dm_cpf <<UNIQUE>>
+  cnpj : dm_cnpj <<UNIQUE>>
+  criado_em : TIMESTAMPTZ
+  --
+  regra: PF => cpf obrigatório e cnpj nulo
+  regra: PJ => cnpj obrigatório e cpf nulo
+}
+
+entity "veiculo" as veiculo {
+  * id_veiculo : BIGINT <<PK>>
+  --
+  id_cliente : BIGINT <<FK>>
+  placa : dm_placa <<UNIQUE>>
+  marca : VARCHAR(60)
+  modelo : VARCHAR(60)
+  ano_fabricacao : INTEGER
+  cor : VARCHAR(30)
+}
+
+entity "funcionario" as funcionario {
+  * id_funcionario : BIGINT <<PK>>
+  --
+  nome : VARCHAR(120)
+  email : dm_email <<UNIQUE>>
+  cargo : VARCHAR(60)
+  especialidade : VARCHAR(80)
+  salario : NUMERIC(12,2)
+  ativo : BOOLEAN
+  --
+  regra: salario > 0
+}
+
+entity "usuario_sistema" as usuario {
+  * id_usuario : BIGINT <<PK>>
+  --
+  id_funcionario : BIGINT <<FK, UNIQUE>>
+  login : VARCHAR(80) <<UNIQUE>>
+  senha_hash : TEXT
+  perfil : dm_perfil_usuario
+  ativo : BOOLEAN
+  criado_em : TIMESTAMPTZ
+}
+
+entity "tipo_servico" as tipo_servico {
+  * id_tipo_servico : BIGINT <<PK>>
+  --
+  descricao : VARCHAR(120)
+  preco_base : NUMERIC(12,2)
+  tempo_estimado_minutos : INTEGER
+  ativo : BOOLEAN
+}
+
+entity "peca" as peca {
+  * id_peca : BIGINT <<PK>>
+  --
+  nome : VARCHAR(120)
+  fornecedor : VARCHAR(120)
+  quantidade_atual : INTEGER
+  quantidade_minima : INTEGER
+  preco_unitario : NUMERIC(12,2)
+  ativo : BOOLEAN
+  --
+  regra: estoque nunca negativo
+}
+
+entity "agendamento" as agendamento {
+  * id_agendamento : BIGINT <<PK>>
+  --
+  id_veiculo : BIGINT <<FK>>
+  data_abertura : TIMESTAMPTZ
+  data_conclusao : TIMESTAMPTZ
+  status : dm_status_os
+  km_entrada : INTEGER
+  km_saida : INTEGER
+  total_mao_de_obra : NUMERIC(12,2)
+  total_pecas : NUMERIC(12,2)
+  valor_total : NUMERIC(12,2) <<Generated>>
+  observacoes : TEXT
+  --
+  regra: conclusão >= abertura
+  regra: km_saida >= km_entrada
+}
+
+entity "item_servico" as item_servico {
+  * id_item_servico : BIGINT <<PK>>
+  --
+  id_agendamento : BIGINT <<FK>>
+  id_tipo_servico : BIGINT <<FK>>
+  id_funcionario : BIGINT <<FK>>
+  quantidade : INTEGER
+  preco_unitario : NUMERIC(12,2)
+  desconto_percentual : NUMERIC(5,2)
+  total_item : NUMERIC(12,2) <<Generated>>
+}
+
+entity "item_peca" as item_peca {
+  * id_item_peca : BIGINT <<PK>>
+  --
+  id_agendamento : BIGINT <<FK>>
+  id_peca : BIGINT <<FK>>
+  quantidade : INTEGER
+  preco_unitario : NUMERIC(12,2)
+  desconto_percentual : NUMERIC(5,2)
+  total_item : NUMERIC(12,2) <<Generated>>
+}
+
+entity "pagamento" as pagamento {
+  * id_pagamento : BIGINT <<PK>>
+  --
+  id_agendamento : BIGINT <<FK>>
+  forma_pagamento : dm_forma_pagamento
+  status_pagamento : dm_status_pagamento
+  valor_pago : NUMERIC(12,2)
+  data_pagamento : TIMESTAMPTZ
+  parcelas : INTEGER
+  --
+  regra: somente OS concluída recebe pagamento
+}
+
+entity "avaliacao" as avaliacao {
+  * id_avaliacao : BIGINT <<PK>>
+  --
+  id_agendamento : BIGINT <<FK, UNIQUE>>
+  nota : INTEGER
+  comentario : TEXT
+  data_avaliacao : TIMESTAMPTZ
+  --
+  regra: nota entre 1 e 5
+  regra: somente OS concluída recebe avaliação
+}
+
+cliente ||--o{ veiculo : possui
+veiculo ||--o{ agendamento : gera
+agendamento ||--o{ item_servico : contém
+tipo_servico ||--o{ item_servico : é_executado
+funcionario ||--o{ item_servico : responsável
+agendamento ||--o{ item_peca : consome
+peca ||--o{ item_peca : é_consumida
+agendamento ||--o{ pagamento : recebe
+agendamento ||--o| avaliacao : recebe
+funcionario ||--o| usuario : acessa_sistema
+
+@enduml

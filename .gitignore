@@ -1,0 +1,23 @@
+# Credenciais e ambiente
+.env
+*.env
+application-prod.yml
+application-prod.properties
+
+# Builds
+/target/
+/dist/
+/build/
+__pycache__/
+*.pyc
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# Banco local e backups
+*.sqlite
+*.db
+*.backup
+*.dump
